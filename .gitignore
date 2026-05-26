@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Project: do NOT commit any of these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Training artifacts (large, must live on HF Hub or local-only)
+cache/
+outputs/
+checkpoints/
+wandb/
+mlruns/
+*.pt
+*.ckpt
+*.safetensors
+*.bin
+features_*.npz
+
+# Datasets (must come from HF on demand, never committed)
+# Anchored to repo root so it doesn't shadow src/natscore/data/
+/data/
+/datasets/
+*.wav
+*.flac
+*.mp3
+*.ogg
+# but DO keep tiny test fixtures
+!tests/fixtures/*.wav
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local logs / scratch
+*.log
+scratch/
+tmp/
