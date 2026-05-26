@@ -1,0 +1,42 @@
+# Sanity-check config used for PROJECT_PLAN.md s8 M3 exit criterion:
+# "Loss should drop monotonically (50-100 steps)."
+#
+# Runs against the 30-pair laptop cache produced by:
+#   python scripts/01_extract_features.py --limit 30 --output cache/sanity
+#   python scripts/build_pair_meta.py --limit 30 --output cache/sanity/pair_meta.json
+
+run_name: natscore-sanity
+seed: 42
+batch_size: 4
+epochs: 20
+max_steps: 80
+eval_every_steps: 0
+checkpoint_every_steps: 0
+log_every_steps: 5
+output_dir: outputs
+wandb_enabled: false       # offline run; W&B noise not useful here
+
+model:
+  n_hidden_states: 13
+  hidden_dim: 768
+  pooler_bottleneck_dim: 256
+  score_bottleneck_dim: 256
+  dropout: 0.0
+  init_layer_weights: uniform
+
+data:
+  cache_dir: cache/sanity
+  splits: ["train"]
+  high_consensus_only: false
+  magnitude_weighting: false
+  drop_pairs_missing_side: true
+  num_workers: 0
+
+optim:
+  optimizer: adamw
+  lr: 3.0e-3                  # higher LR so 30 pairs * 20 epochs actually moves
+  weight_decay: 0.0
+  betas: [0.9, 0.999]
+  grad_clip: 1.0
+  warmup_steps: 5
+  scheduler: cosine
