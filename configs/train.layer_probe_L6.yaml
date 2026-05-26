@@ -1,0 +1,45 @@
+# M5b ablation 4 (representative): layer-wise probe -- freeze alpha to
+# one-hot on encoder layer 6 (mid layer). PROJECT_PLAN.md s10.1 #3 +
+# arXiv 2604.02605 (intermediate-layer hypothesis).
+#
+# Run this config 5x with frozen_layer_idx in {0, 3, 6, 9, 12} to produce
+# the accuracy-vs-layer figure. Lower LR + fewer warmup steps because the
+# trainable surface is tiny (~395K still, but alpha is frozen so the model
+# converges faster).
+
+run_name: natscore-layer-probe-L6
+seed: 42
+batch_size: 16
+epochs: 3
+checkpoint_every_steps: 500
+log_every_steps: 25
+output_dir: /kaggle/working/outputs
+wandb_project: natscore
+wandb_enabled: true
+
+model:
+  n_hidden_states: 13
+  hidden_dim: 768
+  pooler_bottleneck_dim: 256
+  score_bottleneck_dim: 256
+  dropout: 0.1
+  init_layer_weights: uniform
+  frozen_layer_idx: 6              # <-- the only change vs baseline; sweep 0/3/6/9/12
+
+data:
+  cache_dir: ""
+  splits: ["train"]
+  high_consensus_only: false
+  magnitude_weighting: false
+  subset_filter: null
+  drop_pairs_missing_side: true
+  num_workers: 0
+
+optim:
+  optimizer: adamw
+  lr: 5.0e-4                       # <-- halved; alpha frozen so head converges faster
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+  grad_clip: 1.0
+  warmup_steps: 300
+  scheduler: cosine

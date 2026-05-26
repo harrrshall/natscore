@@ -91,6 +91,7 @@ class OnlineTrainer:
             token=token,
             high_consensus_only=cfg.data.high_consensus_only,
             magnitude_weighting=cfg.data.magnitude_weighting,
+            subset_filter=cfg.data.subset_filter,
             shuffle_shards=True,
             shard_seed=cfg.seed,
         )

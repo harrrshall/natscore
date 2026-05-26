@@ -1,15 +1,18 @@
-# M5b ablation 3: train only on the `regular` subset of SpeechJudge.
-# Evaluated against the full dev (both subsets) for transfer measurement.
-# PROJECT_PLAN.md s10.1 #4: "Transfer regular <-> expressive".
+# Default Kaggle T4 / P100 training config. The four M5b ablations
+# (high_consensus, magnitude, regular_only, layer_probe_L6) inherit from this
+# via the ablation notebook -- override only the fields that differ.
 
-run_name: natscore-small-v0-regular-only
+run_name: natscore-small-v0-kaggle
 seed: 42
 batch_size: 16
 epochs: 5
+max_steps: null
+eval_every_steps: 0
 checkpoint_every_steps: 500
 log_every_steps: 25
 output_dir: /kaggle/working/outputs
 wandb_project: natscore
+wandb_entity: null
 wandb_enabled: true
 
 model:
@@ -22,11 +25,11 @@ model:
   frozen_layer_idx: null
 
 data:
-  cache_dir: ""
+  cache_dir: ""               # unused by OnlineTrainer
   splits: ["train"]
   high_consensus_only: false
   magnitude_weighting: false
-  subset_filter: regular          # <-- the only change vs baseline
+  subset_filter: null
   drop_pairs_missing_side: true
   num_workers: 0
 

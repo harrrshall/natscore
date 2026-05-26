@@ -20,6 +20,7 @@ class ModelConfig:
     score_bottleneck_dim: int = 256
     dropout: float = 0.0
     init_layer_weights: str = "uniform"
+    frozen_layer_idx: int | None = None     # M5b layer-probe ablation
 
 
 @dataclass
@@ -28,6 +29,7 @@ class DataConfig:
     splits: list[str] = field(default_factory=lambda: ["train"])
     high_consensus_only: bool = False        # filter pairs to chosen==True
     magnitude_weighting: bool = False        # use parse_magnitude_weight
+    subset_filter: str | None = None         # "regular" | "expressive" | None (M5b ablation #3)
     drop_pairs_missing_side: bool = True
     num_workers: int = 0                     # 0 means main process (safer with memmap)
 

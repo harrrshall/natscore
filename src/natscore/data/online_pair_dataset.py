@@ -59,16 +59,22 @@ class StreamingPairDataset(IterableDataset[StreamingPairItem]):
         skip: int = 0,
         high_consensus_only: bool = False,
         magnitude_weighting: bool = False,
+        subset_filter: str | None = None,
         shuffle_shards: bool = False,
         shard_seed: int = 0,
     ) -> None:
         super().__init__()
+        if subset_filter is not None and subset_filter not in ("regular", "expressive"):
+            raise ValueError(
+                f"subset_filter must be None | 'regular' | 'expressive'; got {subset_filter!r}"
+            )
         self.split = split
         self.limit = limit
         self.token = token
         self.skip = skip
         self.high_consensus_only = high_consensus_only
         self.magnitude_weighting = magnitude_weighting
+        self.subset_filter = subset_filter
         self.shuffle_shards = shuffle_shards
         self.shard_seed = shard_seed
         self._epoch = 0
@@ -88,6 +94,8 @@ class StreamingPairDataset(IterableDataset[StreamingPairItem]):
                 yield item
 
     def _to_item(self, pr: PairRecord) -> StreamingPairItem | None:
+        if self.subset_filter is not None and pr.subset != self.subset_filter:
+            return None
         if self.high_consensus_only and not pr.chosen:
             return None
         if pr.naturalness_label == "A":

@@ -46,16 +46,23 @@ class NatScoreHeadConfig:
     score_bottleneck_dim: int = 256
     dropout: float = 0.0                # zero by default; head is small enough to not overfit fast
     init_layer_weights: str = "uniform"  # "uniform" | "last" | "balanced"
+    frozen_layer_idx: int | None = None  # if set, collapse alpha to one-hot on this layer (M5b layer-probe)
 
 
 class LayerWeightedSum(nn.Module):
     """Learnable scalar weighting over Whisper encoder layers.
 
-    Parameter count: n_hidden_states (just `alpha`).
+    Parameter count: n_hidden_states (just `alpha`) unless frozen.
     """
 
-    def __init__(self, n_hidden_states: int = 13, init: str = "uniform") -> None:
+    def __init__(
+        self,
+        n_hidden_states: int = 13,
+        init: str = "uniform",
+        frozen_layer_idx: int | None = None,
+    ) -> None:
         super().__init__()
+        self.n_hidden_states = n_hidden_states
         if init == "uniform":
             init_vals = torch.zeros(n_hidden_states)
         elif init == "last":
@@ -69,6 +76,31 @@ class LayerWeightedSum(nn.Module):
         else:
             raise ValueError(f"Unknown init={init!r}")
         self.alpha = nn.Parameter(init_vals)
+        if frozen_layer_idx is not None:
+            self.freeze_to_layer(frozen_layer_idx)
+        else:
+            self._frozen_layer_idx = None
+
+    def freeze_to_layer(self, layer_idx: int) -> None:
+        """Collapse alpha to one-hot on `layer_idx`; mark the param non-trainable.
+
+        Used by the M5b layer-wise probe ablation -- forces the head to read
+        from exactly one Whisper encoder layer so accuracy-vs-layer makes sense.
+        """
+        if not 0 <= layer_idx < self.n_hidden_states:
+            raise ValueError(
+                f"layer_idx={layer_idx} must be in [0, {self.n_hidden_states})"
+            )
+        with torch.no_grad():
+            one_hot = torch.full((self.n_hidden_states,), -1e9)
+            one_hot[layer_idx] = 0.0
+            self.alpha.copy_(one_hot)
+        self.alpha.requires_grad_(False)
+        self._frozen_layer_idx = layer_idx
+
+    @property
+    def frozen_layer_idx(self) -> int | None:
+        return self._frozen_layer_idx
 
     @property
     def weights(self) -> torch.Tensor:
@@ -94,6 +126,7 @@ class NatScoreHead(nn.Module):
         self.layer_sum = LayerWeightedSum(
             n_hidden_states=c.n_hidden_states,
             init=c.init_layer_weights,
+            frozen_layer_idx=c.frozen_layer_idx,
         )
         self.pooler = AttentionPooler(
             hidden_dim=c.hidden_dim,

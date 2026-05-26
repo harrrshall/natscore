@@ -1,0 +1,40 @@
+# M5b ablation 1: train only on chosen==True pairs (~31K, high rater
+# agreement >40%). PROJECT_PLAN.md s10.1 #1 -- the SpeechJudge authors
+# explicitly flagged this as a research question on their dataset card.
+
+run_name: natscore-small-v0-high-consensus
+seed: 42
+batch_size: 16
+epochs: 5
+checkpoint_every_steps: 500
+log_every_steps: 25
+output_dir: /kaggle/working/outputs
+wandb_project: natscore
+wandb_enabled: true
+
+model:
+  n_hidden_states: 13
+  hidden_dim: 768
+  pooler_bottleneck_dim: 256
+  score_bottleneck_dim: 256
+  dropout: 0.1
+  init_layer_weights: uniform
+  frozen_layer_idx: null
+
+data:
+  cache_dir: ""
+  splits: ["train"]
+  high_consensus_only: true       # <-- the only change
+  magnitude_weighting: false
+  subset_filter: null
+  drop_pairs_missing_side: true
+  num_workers: 0
+
+optim:
+  optimizer: adamw
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+  grad_clip: 1.0
+  warmup_steps: 500
+  scheduler: cosine

@@ -1,8 +1,10 @@
-# M5b ablation 3: train only on the `regular` subset of SpeechJudge.
-# Evaluated against the full dev (both subsets) for transfer measurement.
-# PROJECT_PLAN.md s10.1 #4: "Transfer regular <-> expressive".
+# M5b ablation 2: full 42K with ordinal-magnitude-weighted BT.
+# PROJECT_PLAN.md s3.2 / decision-log 2026-05-26. Hypothesis: magnitude
+# weighting (parsed from naturalness_annotation, e.g. ["B+2","B+1"] -> w=1.5)
+# recovers most of the high-consensus filter's denoising effect without
+# throwing away ~11K training pairs.
 
-run_name: natscore-small-v0-regular-only
+run_name: natscore-small-v0-magnitude
 seed: 42
 batch_size: 16
 epochs: 5
@@ -25,8 +27,8 @@ data:
   cache_dir: ""
   splits: ["train"]
   high_consensus_only: false
-  magnitude_weighting: false
-  subset_filter: regular          # <-- the only change vs baseline
+  magnitude_weighting: true       # <-- the only change vs baseline
+  subset_filter: null
   drop_pairs_missing_side: true
   num_workers: 0
 
