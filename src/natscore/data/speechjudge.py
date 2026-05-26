@@ -92,6 +92,105 @@ def _decode_audio_struct(struct: dict) -> tuple[np.ndarray, int]:
     return wav, int(sr)
 
 
+@dataclass(frozen=True)
+class PairRecord:
+    """One full SpeechJudge preference pair, both clips decoded.
+
+    Used by the online-streaming training path (Kaggle T4) where we
+    don't pre-extract Whisper features to disk -- we run the encoder
+    forward as part of the training step instead.
+    """
+
+    pair_index: int
+    subset: str                              # "regular" | "expressive"
+    language_setting: str                    # "zh2en", "en2en", ...
+    target_text: str
+    audio_a: np.ndarray                      # float32 mono
+    audio_b: np.ndarray
+    sample_rate_a: int
+    sample_rate_b: int
+    naturalness_label: str                   # "A" or "B"
+    naturalness_annotation: list[str]        # e.g. ["B+2", "B+1"]
+    chosen: bool                             # high-rater-agreement flag
+
+
+def iter_pairs(
+    split: str = "train",
+    limit: int | None = None,
+    *,
+    token: str | None = None,
+    skip: int = 0,
+    shuffle_shards: bool = False,
+    shard_seed: int = 0,
+) -> Iterator[PairRecord]:
+    """Stream-decode SpeechJudge as full pairs (both audio sides + labels).
+
+    Designed for online training: each PairRecord has everything the
+    training step needs, in a single emit. No separate pair_meta sidecar
+    required.
+
+    Args:
+        split: dataset split, one of {"train", "dev", "test"}.
+        limit: max pairs to yield. None = full split.
+        token: HF token; reads from env if None.
+        skip: pairs to skip from the start (resume / sharding).
+        shuffle_shards: if True, randomise shard visit order (epoch-level
+            shuffle that doesn't blow memory on the in-shard ordering).
+        shard_seed: rng seed for shard shuffle.
+    """
+    if split not in SPLITS:
+        raise ValueError(f"split={split!r} not in {SPLITS}")
+
+    import random
+
+    import pyarrow.parquet as pq
+    from huggingface_hub import hf_hub_download
+
+    shards = _list_split_shards(split, token=token)
+    if not shards:
+        raise RuntimeError(f"No parquet shards found for split {split!r} in {DATASET_ID}")
+    if shuffle_shards:
+        rng = random.Random(shard_seed)
+        shards = list(shards)
+        rng.shuffle(shards)
+
+    yielded = 0
+    rows_seen = 0
+    for shard_name in shards:
+        if limit is not None and yielded >= limit:
+            break
+        local = hf_hub_download(
+            repo_id=DATASET_ID, filename=shard_name,
+            repo_type="dataset", token=token,
+        )
+        parquet = pq.ParquetFile(local)
+        for rg_idx in range(parquet.num_row_groups):
+            if limit is not None and yielded >= limit:
+                break
+            table = parquet.read_row_group(rg_idx)
+            for row in table.to_pylist():
+                if rows_seen < skip:
+                    rows_seen += 1
+                    continue
+                if limit is not None and yielded >= limit:
+                    break
+                wav_a, sr_a = _decode_audio_struct(row["audioA"])
+                wav_b, sr_b = _decode_audio_struct(row["audioB"])
+                yield PairRecord(
+                    pair_index=rows_seen,
+                    subset=row.get("subset", "") or "",
+                    language_setting=row.get("language_setting", "") or "",
+                    target_text=row.get("target_text", "") or "",
+                    audio_a=wav_a, audio_b=wav_b,
+                    sample_rate_a=sr_a, sample_rate_b=sr_b,
+                    naturalness_label=row.get("naturalness_label", "") or "",
+                    naturalness_annotation=row.get("naturalness_annotation") or [],
+                    chosen=bool(row.get("chosen", False)),
+                )
+                rows_seen += 1
+                yielded += 1
+
+
 def iter_clips(
     split: str = "train",
     limit: int | None = None,
