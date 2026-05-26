@@ -1,8 +1,10 @@
 # NatScore
 
-> **Status: pre-alpha (Milestone 0 scaffold).** Not yet installable from PyPI. No
-> trained model exists yet. See `PROJECT_PLAN.md` for the full design and
-> implementation milestones.
+> **Status: pre-alpha.** Architecture, training pipeline, and evaluation
+> suite all working end-to-end. Headline number pending the first
+> Kaggle T4 run on the full SpeechJudge-Data train split. Not yet on
+> PyPI or HuggingFace Hub. See [`STATUS.md`](STATUS.md) for the latest
+> snapshot and [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for full design.
 
 A small, preference-supervised **naturalness scorer for modern neural TTS**.
 
@@ -44,14 +46,64 @@ retraining on a permissively-licensed dataset if commercial use is required.
 
 See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) §8 for the milestone breakdown:
 
-- [x] **M0** — Repo scaffold, package skeleton, CI
-- [ ] **M1** — SpeechJudge-Data inspection + schema dump
-- [ ] **M2** — Frozen Whisper feature extraction + disk cache
-- [ ] **M3** — BT head training loop
-- [ ] **M4** — Evaluation suite (SpeechJudge-Eval + VoiceMOS + NISQA + SOMOS)
-- [ ] **M5** — Ablations (high-consensus, regular↔expressive, encoder ablations, layer-wise probe)
+- [x] **M0** — Repo scaffold, package skeleton, CI ([`e578473`](../../commit/e578473))
+- [x] **M1** — SpeechJudge-Data inspection + schema dump ([`d084774`](../../commit/d084774))
+- [x] **M2** — Frozen Whisper feature extraction + cache ([`d261cd5`](../../commit/d261cd5))
+- [x] **M3** — BT head + training loop (sanity-validated) ([`d0cceee`](../../commit/d0cceee))
+- [x] **M4** — Evaluation suite with bootstrap CI + ECE + breakdown ([`34ad250`](../../commit/34ad250))
+- [x] **M5a** — Kaggle T4 online-training notebook ready ([`d9fa459`](../../commit/d9fa459))
+- [ ] **M5b** — Headline run on full 42K train (kicked off on Kaggle) → pairwise acc > 70%
+- [ ] **M5c** — Ablation grid (high-consensus, regular↔expressive, layer-wise probe, magnitude-weighted BT, Gemini-CoT distillation)
 - [ ] **M6** — Packaging + PyPI + HF Hub release
 - [ ] **M7** — Workshop paper draft + HF Spaces demo
+
+## Current benchmark numbers
+
+| Run | n_pairs | Pairwise acc | 95% CI | ECE | Notes |
+|---|---|---|---|---|---|
+| `natscore-small-v0` / dev[:100] | 100 | **52.00%** | [42.98, 62.00] | 31.30% | laptop-CPU pipeline validation only; 500 training pairs |
+
+See [`docs/BENCHMARK.md`](docs/BENCHMARK.md) for the full breakdown and
+per-language slices. The 52% is a pipeline-validation baseline — it
+includes 50% (chance) in the CI. The first real headline number lands
+when the Kaggle T4 run completes on the full 42K train split.
+
+## Running the headline training run on Kaggle (the next step)
+
+See [`docs/KAGGLE_SETUP.md`](docs/KAGGLE_SETUP.md) for the full
+step-by-step. The five-minute version:
+
+1. **One-time:** accept the SpeechJudge-Data terms at
+   https://huggingface.co/datasets/RMSnow/SpeechJudge-Data
+2. **One-time:** create a new Kaggle notebook, set **Accelerator =
+   GPU T4 x1**, add three secrets (`HF_TOKEN`, `GITHUB_TOKEN`, optionally
+   `WANDB_API_KEY`).
+3. **Per run:** **File → Import Notebook** the file at
+   `scripts/kaggle/train_natscore_t4.ipynb` and click **Run All**.
+4. ~5.5 h later, download
+   `/kaggle/working/outputs/natscore-small-v0-kaggle/final.pt` and the
+   companion `eval_dev.json`.
+
+The trainer auto-resumes from `latest.pt` if the Kaggle kernel hits
+its 9 h timeout — re-run the same notebook and it picks up at the
+last 500-step checkpoint.
+
+## Development
+
+```bash
+git clone https://github.com/harrrshall/natscore.git
+cd natscore
+python -m venv .venv && source .venv/bin/activate
+# CPU-only torch (smaller wheel, faster install)
+pip install --index-url https://download.pytorch.org/whl/cpu \
+  "torch>=2.3,<2.7" torchaudio
+pip install -e ".[dev,train]"
+pytest -q          # 83 pass, 3 Whisper-gated skip
+```
+
+Resume protocol after a session interruption: read
+[`STATUS.md`](STATUS.md) → check `git log --oneline | head` →
+`pytest -q` → continue from `STATUS.md`'s **Next concrete action**.
 
 ## Citation
 
