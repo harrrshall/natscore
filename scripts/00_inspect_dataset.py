@@ -74,7 +74,12 @@ def _whoami(HfApi, token: str) -> str:
 
 
 def _inspect_schema(load_dataset, token: str, limit: int = 5):
-    """Load a tiny streaming slice and return (schema_dict, sample_rows)."""
+    """Load a tiny streaming slice and return (schema_dict, sample_rows).
+
+    Audio columns are explicitly NOT decoded -- we want raw schema and
+    storage-format info, not waveform samples. This avoids the torchcodec
+    runtime dependency that the default `datasets` Audio feature requires.
+    """
     print(f"Streaming a {limit}-row slice of {DATASET_ID} ...")
     try:
         ds_iter = load_dataset(DATASET_ID, split="train", streaming=True, token=token)
@@ -86,6 +91,20 @@ def _inspect_schema(load_dataset, token: str, limit: int = 5):
             "  - HF_TOKEN lacks `read` scope\n"
             "  - Dataset id has changed since PROJECT_PLAN.md was written"
         )
+
+    # Disable audio decoding on every Audio-typed column -- we only need raw
+    # bytes/path metadata to classify storage format. Schema is available
+    # *before* iteration via `.features`.
+    try:
+        from datasets import Audio  # type: ignore[import-not-found]
+
+        features = getattr(ds_iter, "features", None)
+        if features is not None:
+            for col, feat in list(features.items()):
+                if isinstance(feat, Audio):
+                    ds_iter = ds_iter.cast_column(col, Audio(decode=False))
+    except Exception as exc:
+        print(f"[note] Could not pre-disable audio decoding ({exc}); proceeding anyway.")
 
     rows = []
     iterator = iter(ds_iter)
