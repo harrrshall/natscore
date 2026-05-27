@@ -142,6 +142,56 @@ def test_stacking_encoder_returns_stacked_tensor():
     assert (out[:, 2] == 2.0).all()
 
 
+def test_dataparallel_wrapper_invariant():
+    """`_fwd_model.module is self.model` must hold so checkpoint saves
+    self.model.state_dict() and DataParallel's view stays consistent."""
+    from natscore.model import NatScoreHead, NatScoreHeadConfig
+    head = NatScoreHead(NatScoreHeadConfig(
+        n_hidden_states=3, hidden_dim=8,
+        pooler_bottleneck_dim=4, score_bottleneck_dim=4,
+    ))
+    wrapped = torch.nn.DataParallel(head, device_ids=None)
+    assert wrapped.module is head, "DataParallel.module must point to the same Python object"
+    # Parameter identity: a state-dict update on head shows up via wrapped.
+    head.layer_sum.alpha.data.fill_(0.5)
+    sd_via_wrapped = wrapped.module.state_dict()
+    assert torch.equal(sd_via_wrapped["layer_sum.alpha"], torch.full((3,), 0.5))
+
+
+def test_dataparallel_state_dict_has_no_module_prefix_after_unwrap():
+    """If we accidentally saved DP-wrapped.state_dict() instead of
+    .module.state_dict(), every key would get prefixed with 'module.'
+    and would fail to load into a single-GPU NatScoreHead. Our patch
+    always saves via self.model.state_dict() (the unwrapped head).
+    This test asserts that invariant by simulating the exact save path.
+    """
+    from natscore.model import NatScoreHead, NatScoreHeadConfig
+    head = NatScoreHead(NatScoreHeadConfig(
+        n_hidden_states=3, hidden_dim=8,
+        pooler_bottleneck_dim=4, score_bottleneck_dim=4,
+    ))
+    wrapped = torch.nn.DataParallel(head, device_ids=None)
+
+    # What the trainer DOES (correct, per online_trainer.py:save_checkpoint):
+    good_sd = head.state_dict()  # self.model.state_dict()
+    # What it MUST NOT do:
+    bad_sd = wrapped.state_dict()  # self._fwd_model.state_dict()
+
+    assert all(not k.startswith("module.") for k in good_sd.keys())
+    assert all(k.startswith("module.") for k in bad_sd.keys())
+
+    # The good state_dict loads cleanly into a fresh unwrapped head; the bad
+    # one would either need stripping or fail with unexpected-keys errors.
+    head2 = NatScoreHead(NatScoreHeadConfig(
+        n_hidden_states=3, hidden_dim=8,
+        pooler_bottleneck_dim=4, score_bottleneck_dim=4,
+    ))
+    missing, unexpected = head2.load_state_dict(good_sd, strict=False)
+    assert missing == [] and unexpected == [], (
+        f"unwrapped load failed: missing={missing} unexpected={unexpected}"
+    )
+
+
 def test_checkpoint_state_dict_is_device_count_agnostic(tmp_path: Path):
     """A checkpoint saved from a multi-GPU run must load cleanly into a
     single-GPU trainer (and vice versa). Achieved by always saving

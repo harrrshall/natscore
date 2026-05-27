@@ -84,11 +84,20 @@ class _StackingEncoderModule(torch.nn.Module):
         self.encoder = encoder
 
     def forward(self, input_features: torch.Tensor) -> torch.Tensor:
-        out = self.encoder(
-            input_features, output_hidden_states=True, return_dict=True,
-        )
-        # `hidden_states` is a tuple of length (n_layers + 1), each [B, T, D].
-        return torch.stack(out.hidden_states, dim=1)  # [B, H, T, D]
+        # Belt-and-suspenders no_grad. The encoder is frozen
+        # (.requires_grad_(False)) so this is paranoia, but DataParallel's
+        # `parallel_apply` spawns worker threads that don't inherit
+        # `inference_mode` from the main thread (verified in torch source).
+        # `grad_enabled` IS propagated, so workers already run no-grad when
+        # the caller uses @torch.inference_mode(); this just guarantees the
+        # encoder is also no-grad if anyone calls the wrapper outside that
+        # decorator (e.g. unit tests).
+        with torch.no_grad():
+            out = self.encoder(
+                input_features, output_hidden_states=True, return_dict=True,
+            )
+            # `hidden_states` is a tuple of length (n_layers + 1), each [B, T, D].
+            return torch.stack(out.hidden_states, dim=1)  # [B, H, T, D]
 
 
 class WhisperFeatureExtractor:
