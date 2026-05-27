@@ -69,14 +69,44 @@ class WhisperFeatureMeta:
         return self.n_hidden_states * self.output_frames * self.hidden_dim * bytes_per_value
 
 
+class _StackingEncoderModule(torch.nn.Module):
+    """Wraps a WhisperEncoder so .forward() returns a single Tensor[B, H, T, D].
+
+    Why a wrapper module: `torch.nn.DataParallel` scatters input along dim 0,
+    runs the module on each device, then concatenates outputs along dim 0.
+    It handles single-Tensor outputs cleanly; it gets fragile with the
+    `BaseModelOutput` dataclass that HF Whisper returns. Stacking inside the
+    wrapper means DataParallel only ever sees a Tensor in / Tensor out.
+    """
+
+    def __init__(self, encoder: torch.nn.Module) -> None:
+        super().__init__()
+        self.encoder = encoder
+
+    def forward(self, input_features: torch.Tensor) -> torch.Tensor:
+        out = self.encoder(
+            input_features, output_hidden_states=True, return_dict=True,
+        )
+        # `hidden_states` is a tuple of length (n_layers + 1), each [B, T, D].
+        return torch.stack(out.hidden_states, dim=1)  # [B, H, T, D]
+
+
 class WhisperFeatureExtractor:
-    """Frozen Whisper-small encoder wrapper for naturalness-scoring features."""
+    """Frozen Whisper-small encoder wrapper for naturalness-scoring features.
+
+    Multi-GPU: when the host has >1 CUDA device, the inner encoder is wrapped
+    in `torch.nn.DataParallel` so a single `batch_extract_layerwise` call
+    fans the batch across all visible GPUs. On single-GPU or CPU this is a
+    no-op and the path is byte-identical to before. Saved checkpoints are
+    portable in both directions.
+    """
 
     def __init__(
         self,
         model_name: str = DEFAULT_MODEL,
         device: str | torch.device | None = None,
         dtype: torch.dtype = torch.float32,
+        multi_gpu: bool | None = None,
     ) -> None:
         # Per PROJECT_PLAN.md s9.4: torch<2.6 + non-safetensors checkpoint is
         # a known security issue. Force safetensors regardless of torch version.
@@ -93,6 +123,16 @@ class WhisperFeatureExtractor:
         self._device = torch.device(device) if device else torch.device("cpu")
         self._dtype = dtype
         self._encoder.to(self._device, dtype=self._dtype)
+
+        # Auto-detect multi-GPU unless caller forced a value.
+        if multi_gpu is None:
+            multi_gpu = (
+                self._device.type == "cuda" and torch.cuda.device_count() > 1
+            )
+        self._stacking_encoder: torch.nn.Module = _StackingEncoderModule(self._encoder)
+        if multi_gpu:
+            self._stacking_encoder = torch.nn.DataParallel(self._stacking_encoder)
+        self._multi_gpu = multi_gpu
 
         cfg = self._encoder.config
         self._meta = WhisperFeatureMeta(
@@ -167,12 +207,10 @@ class WhisperFeatureExtractor:
             padding="max_length",      # always pad to 30s -> 3000 mel frames
         )
         input_features = inputs.input_features.to(self._device, dtype=self._dtype)
-
-        out = self._encoder(input_features, output_hidden_states=True, return_dict=True)
-        # `hidden_states` is a tuple of length (n_layers + 1), each Tensor[B, T, D].
-        # Stack along dim=1 -> Tensor[B, H, T, D].
-        stacked = torch.stack(out.hidden_states, dim=1)
-        return stacked
+        # `_stacking_encoder` returns Tensor[B, H, T, D] directly. When
+        # wrapped in DataParallel it fans the batch across all visible GPUs
+        # and gathers the outputs back on `self._device`.
+        return self._stacking_encoder(input_features)
 
     @torch.inference_mode()
     def extract_pooled(self, audio: AudioInput, layer: int = -1) -> torch.Tensor:

@@ -84,6 +84,19 @@ class OnlineTrainer:
         model_cfg = NatScoreHeadConfig(**asdict(cfg.model))
         self.model = NatScoreHead(model_cfg).to(self.device)
 
+        # Multi-GPU: wrap the head in DataParallel. We keep `self.model`
+        # pointing at the unwrapped module so checkpoint save/load remains
+        # device-count-agnostic; `self._fwd_model` is what we call in _step.
+        self._multi_gpu = (
+            self.device.type == "cuda" and torch.cuda.device_count() > 1
+        )
+        if self._multi_gpu:
+            self._fwd_model: torch.nn.Module = torch.nn.DataParallel(self.model)
+            print(f"OnlineTrainer: DataParallel across "
+                  f"{torch.cuda.device_count()} GPUs.")
+        else:
+            self._fwd_model = self.model
+
         # ----- dataset / loader
         self.dataset = StreamingPairDataset(
             split=split,
@@ -146,12 +159,12 @@ class OnlineTrainer:
 
         if self.amp:
             with torch.amp.autocast("cuda", dtype=torch.float16):
-                s_c = self.model(feat_c)
-                s_r = self.model(feat_r)
+                s_c = self._fwd_model(feat_c)
+                s_r = self._fwd_model(feat_r)
                 out = bradley_terry_loss(s_c, s_r, weight=weight)
         else:
-            s_c = self.model(feat_c)
-            s_r = self.model(feat_r)
+            s_c = self._fwd_model(feat_c)
+            s_r = self._fwd_model(feat_r)
             out = bradley_terry_loss(s_c, s_r, weight=weight)
 
         self.optimizer.zero_grad(set_to_none=True)
