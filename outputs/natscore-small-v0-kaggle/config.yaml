@@ -1,0 +1,39 @@
+run_name: natscore-small-v0-kaggle
+seed: 42
+batch_size: 16
+epochs: 5
+max_steps: null
+eval_every_steps: 0
+checkpoint_every_steps: 500
+log_every_steps: 25
+output_dir: /kaggle/working/outputs
+wandb_project: natscore
+wandb_entity: null
+wandb_enabled: true
+model:
+  n_hidden_states: 13
+  hidden_dim: 768
+  pooler_bottleneck_dim: 256
+  score_bottleneck_dim: 256
+  dropout: 0.1
+  init_layer_weights: uniform
+  frozen_layer_idx: null
+data:
+  cache_dir: ''
+  splits:
+  - train
+  high_consensus_only: false
+  magnitude_weighting: false
+  subset_filter: null
+  drop_pairs_missing_side: true
+  num_workers: 0
+optim:
+  optimizer: adamw
+  lr: 0.001
+  weight_decay: 0.0001
+  betas:
+  - 0.9
+  - 0.999
+  grad_clip: 1.0
+  warmup_steps: 500
+  scheduler: cosine

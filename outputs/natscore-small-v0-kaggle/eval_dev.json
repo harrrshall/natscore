@@ -1,0 +1,46 @@
+{
+  "n_pairs": 1000,
+  "pairwise_accuracy": 0.713,
+  "mean_margin": 1.0103333097100258,
+  "ci_low": 0.685975,
+  "ci_high": 0.741,
+  "ece": 0.02271926368486851,
+  "per_subset": {
+    "regular": {
+      "n_pairs": 400,
+      "accuracy": 0.74
+    },
+    "expressive": {
+      "n_pairs": 600,
+      "accuracy": 0.695
+    }
+  },
+  "per_language": {
+    "zh2en": {
+      "n_pairs": 148,
+      "accuracy": 0.6621621621621622
+    },
+    "en2en": {
+      "n_pairs": 252,
+      "accuracy": 0.6388888888888888
+    },
+    "zh2zh": {
+      "n_pairs": 179,
+      "accuracy": 0.8324022346368715
+    },
+    "en2zh": {
+      "n_pairs": 221,
+      "accuracy": 0.8733031674208145
+    },
+    "en2mixed": {
+      "n_pairs": 120,
+      "accuracy": 0.525
+    },
+    "zh2mixed": {
+      "n_pairs": 80,
+      "accuracy": 0.6125
+    }
+  },
+  "run_name": "natscore-small-v0-kaggle / dev[:1000]",
+  "ablation_config": "(headline)"
+}
