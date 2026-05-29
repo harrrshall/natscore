@@ -301,8 +301,6 @@ These dispatch via `train_natscore_ablation.ipynb` with `ABLATION_CONFIG=<name>`
 ```
 natscore/
 ├── README.md                       # this file
-├── STATUS.md                       # always-current handoff doc
-├── PROJECT_PLAN.md                 # full design doc (read for context)
 ├── MODEL_LICENSE.md                # CC-BY-NC for weights
 ├── LICENSE                         # Apache-2.0 for code
 ├── pyproject.toml                  # package + dev deps
@@ -366,8 +364,6 @@ natscore/
 | M6 HF Hub release (v0) | **done. [harrrshall/natscore-small-v0](https://huggingface.co/harrrshall/natscore-small-v0)** |
 | M7 Workshop paper draft + HF Spaces demo | pending |
 
-See [`STATUS.md`](STATUS.md) for the live state and [`PROJECT_PLAN.md`](PROJECT_PLAN.md) §8 for the full milestone breakdown.
-
 ---
 
 ## 11. Licensing
@@ -410,16 +406,3 @@ And the underlying training data:
 - The **SpeechJudge** authors for releasing 99K human-labeled TTS pairs under CC-BY-NC; this project would not exist without that release.
 - **Hugging Face** for the `transformers` + `datasets` infrastructure and the audio open-source culture that makes a project like this trivially reproducible.
 - **Kaggle** for the free T4 x2 quota that turns "needs a budget" into "needs a weekend".
-
----
-
-## 14. Resume protocol (cold start)
-
-If you are picking this up in a new session:
-
-1. Read `~/.claude/projects/-home-cybernovas-Desktop-2026-experiments-NatScore/memory/MEMORY.md`
-2. Read [`STATUS.md`](STATUS.md)
-3. `git log --oneline | head -10`, confirm latest commit
-4. `git status`, surface uncommitted work
-5. `.venv/bin/python -m pytest -q`, confirm 104 pass / 3 skip
-6. Resume from `STATUS.md` **Next concrete action**

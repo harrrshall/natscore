@@ -67,11 +67,5 @@ features_*.npz
 scratch/
 tmp/
 
-# Private development-phase docs (kept locally, not for public repo)
-STATUS.md
-AGENTS.md
-PROJECT_PLAN.md
-find-relevant-people.md
-
 # Personal Kaggle kernel binding (hard-codes user/dataset path)
 scripts/kaggle/kernel-metadata.train.json
