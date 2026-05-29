@@ -7,7 +7,7 @@
 [![License (code)](https://img.shields.io/badge/code-Apache--2.0-blue)](LICENSE)
 [![License (weights)](https://img.shields.io/badge/weights-CC--BY--NC--4.0-yellow)](MODEL_LICENSE.md)
 
-**Status (2026-05-29):** Architecture, training pipeline, and evaluation suite all working end-to-end. Headline Kaggle T4 x2 run **finished — 71.3% pairwise accuracy on dev[:1000]** (95% CI 68.6 – 74.1, ECE 2.27%), clearing the >70% target for M5b. Trained in ~4h52m across two days on T4 x2 + DataParallel with mid-run checkpoint resume. See [`STATUS.md`](STATUS.md) for the handoff snapshot.
+**Status (2026-05-29):** Architecture, training pipeline, and evaluation suite all working end-to-end. Headline Kaggle T4 x2 run finished at **71.3% pairwise accuracy on dev[:1000]** (95% CI 68.6 to 74.1, ECE 2.27%), clearing the >70% target for M5b. Trained in ~4h52m across two days on T4 x2 + DataParallel with mid-run checkpoint resume. Checkpoint live on HF Hub: [harrrshall/natscore-small-v0](https://huggingface.co/harrrshall/natscore-small-v0). See [`STATUS.md`](STATUS.md) for the handoff snapshot.
 
 ---
 
@@ -213,7 +213,7 @@ pip install -e ".[dev,train]"
 pytest -q          # 104 pass, 3 Whisper-gated skip
 ```
 
-`pip install natscore` lands when M6 ships. Until then, install from source.
+No PyPI release planned for v0. Install from source and load the trained checkpoint directly from [HF Hub](https://huggingface.co/harrrshall/natscore-small-v0).
 
 ---
 
@@ -358,10 +358,10 @@ natscore/
 | M3.5 500-pair local CPU training | done |
 | M4 Eval suite (bootstrap CI + ECE + breakdown) | done |
 | M5a Kaggle online-training notebook | done |
-| **M5b Headline run (Kaggle T4 x2 + DP)** | **done — 71.3% pairwise on dev[:1000]** |
+| **M5b Headline run (Kaggle T4 x2 + DP)** | **done. 71.3% pairwise on dev[:1000]** |
 | M5b Tier-1 ablation infrastructure | shipped |
 | M5c Tier-1 ablation runs (high-consensus, magnitude, regular-only, layer probe) | post 2026-05-30 Kaggle quota reset |
-| M6 PyPI + HF Hub release | next, while waiting for ablations |
+| M6 HF Hub release (v0) | **done. [harrrshall/natscore-small-v0](https://huggingface.co/harrrshall/natscore-small-v0)** |
 | M7 Workshop paper draft + HF Spaces demo | pending |
 
 See [`STATUS.md`](STATUS.md) for the live state and [`PROJECT_PLAN.md`](PROJECT_PLAN.md) §8 for the full milestone breakdown.
