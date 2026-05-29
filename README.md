@@ -224,26 +224,28 @@ No PyPI release planned for v0. Install from source and load the trained checkpo
 ```python
 import natscore as ns
 
-# Load the released model (downloads ~150 MB from HF on first call).
-# Pre-alpha note: artifact loads work locally from a trained checkpoint today;
-# HF-hosted load lands with M6.
-scorer = ns.load("natscore-small-v1")
+# Load the released v0 checkpoint from HF Hub.
+# First call downloads ~290 MB Whisper-small + ~5 MB NatScore head; subsequent
+# calls hit the local HF cache.
+scorer = ns.load()                       # defaults to "harrrshall/natscore-small-v0"
+# Equivalents:
+# scorer = ns.load("natscore-small-v0")            # short alias
+# scorer = ns.load("harrrshall/natscore-small-v0") # full HF repo id
+# scorer = ns.load(device="cuda", dtype=torch.float16)  # fp16 encoder on GPU
 
 # Pointwise score (higher = more natural)
-score: float = scorer.score("path/to/tts_output.wav")
-score: float = scorer.score(torch.Tensor)        # also accepts tensors
+s: float = scorer.score("path/to/tts_output.wav")
+s: float = scorer.score(audio_bytes)     # also accepts bytes, numpy arrays, torch tensors
 
-# Pairwise comparison (recommended, uses BT structure)
+# Pairwise comparison (recommended; uses the BT structure the model was trained on)
 result: ns.Pair = scorer.compare("a.wav", "b.wav")
-# result.winner   -> "A" | "B" | "tie"
+# result.winner       -> "a" | "b" | "tie"
 # result.score_a, result.score_b
-# result.confidence (sigmoid of score difference)
+# result.margin       = score_a - score_b
+# result.prob_a_wins  = sigmoid(margin)
 
 # Batched
-scores: list[float] = scorer.batch_score(paths, batch_size=8)
-
-# Optional language hint (passes through to Whisper)
-score = scorer.score("audio.wav", language="zh")
+scores: list[float] = scorer.batch_score(["clip1.wav", "clip2.wav", "clip3.wav"])
 ```
 
 ### 7.2 CLI
