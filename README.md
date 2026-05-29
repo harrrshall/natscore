@@ -7,8 +7,7 @@
 [![License (code)](https://img.shields.io/badge/code-Apache--2.0-blue)](LICENSE)
 [![License (weights)](https://img.shields.io/badge/weights-CC--BY--NC--4.0-yellow)](MODEL_LICENSE.md)
 
-**Status (2026-05-29):** Architecture, training pipeline, and evaluation suite all working end-to-end. Headline Kaggle T4 x2 run finished at **71.3% pairwise accuracy on dev[:1000]** (95% CI 68.6 to 74.1, ECE 2.27%), clearing the >70% target for M5b. Trained in ~4h52m across two days on T4 x2 + DataParallel with mid-run checkpoint resume. Checkpoint live on HF Hub: [harrrshall/natscore-small-v0](https://huggingface.co/harrrshall/natscore-small-v0). See [`STATUS.md`](STATUS.md) for the handoff snapshot.
-
+**Status (2026-05-29):** Architecture, training pipeline, and evaluation suite all working end-to-end. Headline Kaggle T4 x2 run finished at **71.3% pairwise accuracy on dev[:1000]** (95% CI 68.6 to 74.1, ECE 2.27%), clearing the >70% target for M5b. Trained in ~4h52m across two days on T4 x2 + DataParallel with mid-run checkpoint resume. Checkpoint live on HF Hub: [harrrshall/natscore-small-v0](https://huggingface.co/harrrshall/natscore-small-v0). 
 ---
 
 ## 1. The problem
